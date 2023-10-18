@@ -5,70 +5,107 @@ const { Kind } = require("graphql/language");
 
 let reports = [
   {
-    name: "Arto Hellas",
-    date: "10/16/2023",
-    bodymap: "left hand",
-    details: "my left hand got hurt",
-    id: "3d594650-3436-11e9-bc57-8b80ba54c431",
-  },
-  {
-    name: "Matti Luukkainen",
-    date: "10/17/2023",
-    bodymap: "right hand",
-    details: "my right hand got hurt",
-    id: "3d599470-3436-11e9-bc57-8b80ba54c431",
-  },
-  {
+    id: "3d599471-3436-11e9-bc57-8b80ba54c431",
     name: "Venla Ruuska",
     date: "10/18/2023",
-    bodymap: "left leg",
-    details: "my left leg got hurt",
-    id: "3d599471-3436-11e9-bc57-8b80ba54c431",
+    bodyMap: [
+      { id: "1", label: 1, details: "Left Hand" },
+      { id: "2", label: 2, details: "Left Foot" },
+    ],
+  },
+  {
+    id: "3d594650-3436-11e9-bc57-8b80ba54c431",
+    name: "Arto Hellas",
+    date: "10/16/2023",
+    bodyMap: [
+      { id: "1", label: 1, details: "right Hand" },
+      { id: "2", label: 2, details: "left Foot" },
+    ],
+  },
+  {
+    id: "3d599470-3436-11e9-bc57-8b80ba54c431",
+    name: "Matti Luukkainen",
+    date: "10/17/2023",
+    bodyMap: [
+      { id: "1", label: 1, details: "Left Leg" },
+      { id: "2", label: 2, details: "Left Arm" },
+    ],
   },
 ];
 
 const typeDefs = `
     scalar Date
 
-    type Report {
+    type User {
+      id: ID!
+      username: String!
+      email: String!
+      reports: [InjuryReport!]!
+    }
+
+    type InjuryReport {
       name: String!
       date: Date!
-      bodymap: String! 
-      details: String! 
+      bodyMap: [BodyMapArea!]!
       id: ID!
+    }
+
+    type BodyMapArea {
+      id: ID!
+      label: Int!
+      details: String!
+    }
+
+    input BodyMapInput {
+      id: ID!
+      label: Int!
+      details: String!
     }
   
     type Query {
-      ReportCount: Int!
-      allreports: [Report!]!
-      findReport(name: String!): Report
+      user(id: ID!): User
+      injuryReport(id: ID!): InjuryReport
+      allreports(name: String, date: String): [InjuryReport!]!
     }
-
+    
     type Mutation {
       addReport(
         name: String!
         date: Date!
-        bodymap: String! 
-        details: String!
-      ): Report
+        bodyMap: [BodyMapInput!]!
+      ): InjuryReport!
       editReport(
-        id: ID!
         name: String!
         date: Date!
-        bodymap: String!
-        details: String!
-      ): Report
+        bodyMap: [BodyMapInput!]!
+      ): InjuryReport!
       deleteReport( 
         id: ID! 
-      ): Report
+      ): InjuryReport!
     }
 `;
 
 const resolvers = {
   Query: {
-    ReportCount: () => reports.length,
-    allreports: () => reports,
-    findReport: (root, args) => reports.find((r) => r.name === args.name),
+    allreports: (root, args) => {
+      if (!args.name && !args.date) {
+        return reports;
+      }
+      if (args.name && args.date) {
+        const findNameDate = reports.filter(
+          (r) => r.name === args.name && r.date === args.date
+        );
+        return findNameDate;
+      }
+      if (args.name) {
+        const findName = reports.filter((r) => r.name === args.name);
+        return findName;
+      }
+      if (args.date) {
+        const findDate = reports.filter((r) => r.date === args.date);
+        return findDate;
+      }
+    },
   },
   Mutation: {
     addReport: (root, args) => {
@@ -83,7 +120,6 @@ const resolvers = {
 
       const report = { ...args, id: reports.length + 1 };
       reports = reports.concat(report);
-      console.log(report);
       return report;
     },
     editReport: (root, args) => {
@@ -96,8 +132,7 @@ const resolvers = {
         ...report,
         name: args.name,
         date: args.date,
-        bodymap: args.bodymap,
-        details: args.details,
+        bodyMap: args.bodyMap,
       };
       reports = reports.map((r) => (r.id == args.id ? editedReport : r));
       return editedReport;
